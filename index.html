@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Resin Printer Build Volume Comparison</title>
+<link rel="stylesheet" href="./styles.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.js",
+    "three/addons/": "./vendor/three/"
+  }
+}
+</script>
+</head>
+<body>
+<header>
+  <h1>Resin Printer Build Volume Comparison</h1>
+  <p class="sub">Boxes are drawn to real scale (millimetres). Drag to orbit, scroll to zoom.</p>
+</header>
+
+<main>
+  <section class="viewer">
+    <div class="toolbar">
+      <label class="toggle"><input type="checkbox" id="labelsToggle" checked /> Labels</label>
+      <label class="toggle"><input type="checkbox" id="gridToggle" checked /> Grid</label>
+      <label class="toggle"><input type="checkbox" id="overlayToggle" /> Overlay</label>
+      <label class="field-inline" id="anchorWrap" hidden>Anchor
+        <select id="anchorSelect">
+          <option value="front-left">Front left</option>
+          <option value="front-right">Front right</option>
+          <option value="back-left">Back left</option>
+          <option value="back-right">Back right</option>
+        </select>
+      </label>
+      <button id="resetView" type="button">Reset view</button>
+      <button id="showAll" type="button">Show all</button>
+      <button id="hideAll" type="button">Hide all</button>
+      <span class="spacer"></span>
+      <span id="count" class="count"></span>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="scene"></canvas>
+      <div id="empty" class="empty hidden">No printers are visible. Tick a row or add one below.</div>
+    </div>
+  </section>
+
+  <section class="table-section">
+    <h2>Printers</h2>
+    <div class="table-wrap">
+      <table id="printerTable">
+        <thead>
+          <tr>
+            <th aria-label="Visible"></th>
+            <th aria-label="Colour"></th>
+            <th>Printer</th>
+            <th>Brand</th>
+            <th>Build volume</th>
+            <th>Volume</th>
+            <th>Screen resolution</th>
+            <th>Voxel size (XY)</th>
+            <th>Min layer</th>
+            <th>Optimal layer</th>
+            <th>Max layer</th>
+            <th aria-label="Actions"></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <p class="hint">
+      Voxel size is the XY pixel (spot) footprint of the display; a starred value is derived from the
+      resolution and build width rather than published. Layer heights are in micrometres, and a dash means
+      the manufacturer does not publish that figure. Hover any cell for detail.
+    </p>
+  </section>
+
+  <section class="form-section">
+    <h2 id="formTitle">Add a printer</h2>
+    <form id="printerForm" novalidate>
+      <div class="grid">
+        <label>Name<input id="f-name" required placeholder="e.g. Photon Mono M7" /></label>
+        <label>Brand<input id="f-brand" placeholder="e.g. Anycubic" /></label>
+        <label>Technology<input id="f-tech" placeholder="MSLA (LCD)" /></label>
+
+        <label>X width (mm)<input id="f-x" type="number" min="0.1" step="0.01" required placeholder="223" /></label>
+        <label>Y depth (mm)<input id="f-y" type="number" min="0.1" step="0.01" required placeholder="126" /></label>
+        <label>Z height (mm)<input id="f-z" type="number" min="0.1" step="0.01" required placeholder="230" /></label>
+
+        <label>Res X (px)<input id="f-resx" type="number" min="0" step="1" placeholder="13312" /></label>
+        <label>Res Y (px)<input id="f-resy" type="number" min="0" step="1" placeholder="5120" /></label>
+        <label>Class<input id="f-resclass" placeholder="14K" /></label>
+
+        <label>Voxel X (µm)<input id="f-px" type="number" min="0" step="0.1" placeholder="16.8" /></label>
+        <label>Voxel Y (µm)<input id="f-py" type="number" min="0" step="0.1" placeholder="24.8" /></label>
+
+        <label>Min layer (µm)<input id="f-lmin" type="number" min="0" step="1" placeholder="10" /></label>
+        <label>Optimal layer (µm)<input id="f-lopt" type="number" min="0" step="1" placeholder="50" /></label>
+        <label>Max layer (µm)<input id="f-lmax" type="number" min="0" step="1" placeholder="150" /></label>
+
+        <label>Colour<input id="f-color" type="color" value="#38bdf8" /></label>
+        <label class="wide">Note<input id="f-note" placeholder="Optional source or caveat" /></label>
+      </div>
+      <div class="form-actions">
+        <button type="submit" id="submitBtn" class="primary">Add printer</button>
+        <button type="button" id="cancelEdit" class="hidden">Cancel edit</button>
+        <span id="formError" class="error" role="alert"></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="danger-zone">
+    <button id="resetDefaults" type="button">Reset to default printers</button>
+    <button id="clearAll" type="button">Clear all</button>
+  </section>
+</main>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
