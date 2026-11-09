@@ -3,6 +3,18 @@
 A static Three.js site that renders resin 3D printer build volumes to real scale, side by side,
 each in its own colour, with a comparison table underneath.
 
+## Screenshots
+
+Side-by-side view — every volume in its own colour on the grid plane, laid out in a roughly 3:2
+grid, with the comparison table underneath:
+
+![Side-by-side view](docs/screenshots/side-by-side.png)
+
+Overlay view — all visible volumes stacked on a shared bottom corner, with labels lifted and
+stacked vertically and the interior fill dimmed so the stack stays readable:
+
+![Overlay view](docs/screenshots/overlay.png)
+
 ## Run it
 
 The page uses ES modules and an import map, so it must be served over HTTP (not opened as `file://`).
