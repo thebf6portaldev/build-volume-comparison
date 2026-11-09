@@ -4,6 +4,10 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const MM_PER_UNIT = 0.02; // 50mm of build volume = 1 world unit
 const GAP_MM = 45;
 
+// How much of the viewport (as a fraction of half-height/half-width) the boxes'
+// bounding box should fill when the view auto-frames. 1 = edge to edge.
+const FRAME_FILL = 0.86;
+
 // Which bottom corner of every box is pinned to the shared origin in overlay
 // mode. The camera sits at (+x, +y, +z), so +z is the face nearest the viewer
 // ("front"), -z is "back", -x is screen-left and +x is screen-right. The signs
@@ -320,12 +324,15 @@ export function createScene(canvas) {
       bbox.expandByPoint(new THREE.Vector3(p.x - w / 2, 0, p.z - d / 2));
       bbox.expandByPoint(new THREE.Vector3(p.x + w / 2, h, p.z + d / 2));
     }
-    // Sprites always face the camera and their geometry isn't reflected in the
-    // box, so reserve headroom for the label height manually.
-    if (labelsVisible) {
+    // Label sprites are left out of the side-by-side fit: each one sits directly
+    // above its own box, so counting them only pushes the camera back and makes
+    // the volumes small. In overlay mode they're stacked into a column above the
+    // tallest box, which is tall enough to clip, so there they do count.
+    if (labelsVisible && overlay) {
       for (const b of list) {
         const p = b.targetPos;
-        bbox.expandByPoint(new THREE.Vector3(p.x, b.label.position.y, p.z));
+        const halfH = b.label.scale.y / 2;
+        bbox.expandByPoint(new THREE.Vector3(p.x, b.label.position.y + halfH, p.z));
       }
     }
 
@@ -335,36 +342,45 @@ export function createScene(canvas) {
 
     const dir = new THREE.Vector3(0.7, 0.42, 1).normalize();
     controls.target.copy(center);
+    // The fit is measured in NDC, so the aspect ratio must already match the
+    // canvas — otherwise the seeded distance is computed for the wrong shape.
+    resize();
 
     // Seed a distance, measure how much of the frustum the bounding box actually
     // fills, then scale the distance linearly. Perspective extent is inversely
     // proportional to distance, so one correction pass lands it accurately.
     let dist = radius * 3;
     for (let i = 0; i < 3; i++) {
-      camera.position.copy(center).addScaledVector(dir, dist);
-      camera.near = Math.max(0.02, dist / 800);
-      camera.far = dist * 100;
-      camera.updateProjectionMatrix();
-      camera.updateMatrixWorld(true);
+      aimCamera(center, dir, dist);
 
       const ndc = cornerExtents(bbox, camera);
       const fill = Math.max(ndc.x, ndc.y);
       if (fill <= 0) break;
-      dist = dist * fill / 0.86; // leave ~14% margin
+      dist = dist * fill / FRAME_FILL;
     }
 
-    camera.position.copy(center).addScaledVector(dir, dist);
-    camera.near = Math.max(0.02, dist / 800);
-    camera.far = dist * 100;
-    camera.updateProjectionMatrix();
-    camera.updateMatrixWorld(true);
+    aimCamera(center, dir, dist);
 
     controls.minDistance = radius * 0.3;
     controls.maxDistance = dist * 6;
     controls.update();
   }
 
-  // Largest half-extent of the box's corners in NDC space (-1..1) on each axis.
+  // Positions and aims the camera at `center` from `dir` at `dist`. The aim has
+  // to happen before measuring, or the bounding box lands off-centre in NDC and
+  // the measured fill inflates the distance instead of converging on it.
+  function aimCamera(center, dir, dist) {
+    camera.position.copy(center).addScaledVector(dir, dist);
+    camera.near = Math.max(0.02, dist / 800);
+    camera.far = dist * 100;
+    camera.updateProjectionMatrix();
+    controls.update();
+    camera.updateMatrixWorld(true);
+  }
+
+  // Half the NDC spread of the box's corners on each axis (0..1 = half the
+  // viewport). Spread, not absolute position, so the fit is independent of where
+  // the box lands on screen.
   function cornerExtents(bbox, cam) {
     const pts = [
       new THREE.Vector3(bbox.min.x, bbox.min.y, bbox.min.z),
@@ -376,13 +392,14 @@ export function createScene(canvas) {
       new THREE.Vector3(bbox.max.x, bbox.max.y, bbox.min.z),
       new THREE.Vector3(bbox.max.x, bbox.max.y, bbox.max.z),
     ];
-    let x = 0; let y = 0;
+    let minX = Infinity; let maxX = -Infinity;
+    let minY = Infinity; let maxY = -Infinity;
     for (const p of pts) {
       p.project(cam);
-      x = Math.max(x, Math.abs(p.x));
-      y = Math.max(y, Math.abs(p.y));
+      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
     }
-    return { x, y };
+    return { x: (maxX - minX) / 2, y: (maxY - minY) / 2 };
   }
 
   function setFocus(id) {
